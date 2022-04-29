@@ -4,7 +4,7 @@
 Drive chassis (
   {-13, 14, 17, 19},    //left motors
   {15, -16, -18, -20},  //right motors 
-  11,                   //imu port
+  11  ,                   //imu port
   2.75,                 //wheel diameter
   600,                  //Motor cartridge
   1                     //Gear Ratio
@@ -17,7 +17,6 @@ void initialize() {
   ez::print_ez_template();
   pros::delay(500);
   anti_jam_task.suspend();
-  
   chassis.toggle_modify_curve_with_controller(true); 
   chassis.set_active_brake(0); 
   chassis.set_curve_default(0, 0);   
@@ -28,9 +27,12 @@ void initialize() {
 
   ez::as::auton_selector.add_autons
   ({
-     
-    Auton("Interference\n\nAfter driving forward, robot performs differently if interfered or not.", interfered_example),
-    Auton("Interference\n\nAfter driving forward, robot performs differently if interfered or not.", interfered_example),
+    Auton("David Auto", david_auto), 
+    Auton("Tall Goal Rush", tall_goal_rush),
+    Auton("Left With Win Point", left_with_win_point),
+    Auton("Rush", right_with_win_point),
+    Auton("Full Winpoint", win_point),
+    Auton("Interference\n\nAfter driving forward, robot performs differently if interfered or not.", interfered_example)
   });
 
   
@@ -38,7 +40,7 @@ void initialize() {
   ez::as::initialize();
 }
 
-void disabled() {
+void disabled() { 
 }
 
 void competition_initialize() {
@@ -58,11 +60,14 @@ void opcontrol() {
 
   while (true) {
 
-    chassis.tank();
     intake_control();
-    front_fork.button_toggle(pros::E_CONTROLLER_DIGITAL_R1);
-    back_fork.button_toggle(pros::E_CONTROLLER_DIGITAL_L2);
+    chassis.tank();
     
+    front_fork.button_toggle(master.get_digital(pros::E_CONTROLLER_DIGITAL_R1));
+    back_fork.button_toggle(master.get_digital(pros::E_CONTROLLER_DIGITAL_L2));
+    tall_goal_mech.button_toggle(master.get_digital(pros::E_CONTROLLER_DIGITAL_Y));
+    preload_release.button_toggle(master.get_digital(pros::E_CONTROLLER_DIGITAL_X));
+
     pros::delay(ez::util::DELAY_TIME); // This is used for timer calculations!  Keep this ez::util::DELAY_TIME
   }
 }

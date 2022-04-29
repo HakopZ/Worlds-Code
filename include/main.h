@@ -37,8 +37,10 @@
 #include "api.h"
 
 
-#define OPEN true
-#define CLOSE false
+#define OPEN false
+#define CLOSE true
+#define INTAKE 127
+#define OUTTAKE -127
 /**
  * You should add more #includes here
  */

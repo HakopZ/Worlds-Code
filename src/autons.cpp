@@ -19,23 +19,23 @@ void default_constants() {
 }
 
 void tuning_constants() {
-  chassis.set_slew_min_power(80, 80);
+  chassis.set_slew_min_power(70, 70);
   chassis.set_slew_distance(10, 10);
-  chassis.set_pid_constants(&chassis.headingPID, 11, 0, 20, 0);
-  chassis.set_pid_constants(&chassis.forward_drivePID, 0.45, 0, 5, 0);
-  chassis.set_pid_constants(&chassis.backward_drivePID, 0.45, 0, 5, 0);
-  chassis.set_pid_constants(&chassis.turnPID, 5, 0.003, 35, 15);
-  chassis.set_pid_constants(&chassis.swingPID, 7, 0, 45, 0);
+  chassis.set_pid_constants(&chassis.headingPID, 10, 0, 20, 0);   //12 15
+  chassis.set_pid_constants(&chassis.forward_drivePID, 0.825, 0, 6, 0);  //0.5  6
+  chassis.set_pid_constants(&chassis.backward_drivePID, 0.825, 0, 6, 0);
+  chassis.set_pid_constants(&chassis.turnPID, 2.73, 0, 26, 0);
+  chassis.set_pid_constants(&chassis.swingPID, 4.9, 0, 50, 0);
 }
 
-void one_mogo_constants() {
-  chassis.set_slew_min_power(80, 80);
-  chassis.set_slew_distance(7, 7);
-  chassis.set_pid_constants(&chassis.headingPID, 11, 0, 20, 0);
-  chassis.set_pid_constants(&chassis.forward_drivePID, 0.45, 0, 5, 0);
-  chassis.set_pid_constants(&chassis.backward_drivePID, 0.45, 0, 5, 0);
-  chassis.set_pid_constants(&chassis.turnPID, 5, 0.003, 35, 15);
-  chassis.set_pid_constants(&chassis.swingPID, 7, 0, 45, 0);
+void front_mogo_constants() {
+  chassis.set_slew_min_power(70, 70);
+  chassis.set_slew_distance(10, 10);
+  chassis.set_pid_constants(&chassis.headingPID, 10, 0, 20, 0);   //12 15
+  chassis.set_pid_constants(&chassis.forward_drivePID, 0.825, 0, 6, 0);  //0.5  6
+  chassis.set_pid_constants(&chassis.backward_drivePID, 0.825, 0, 6, 0);
+  chassis.set_pid_constants(&chassis.turnPID, 2.7, 0, 32, 0);
+  chassis.set_pid_constants(&chassis.swingPID, 4.9, 0, 50, 0);
 }
 
 void two_mogo_constants() {
@@ -60,25 +60,27 @@ void modified_exit_condition() {
   chassis.set_exit_condition(chassis.drive_exit, 80, 50, 300, 150, 500, 500);
 }
 
-void tug (int attempts) {
-  for (int i=0; i<attempts-1; i++) {
-    // Attempt to drive backwards
-    printf("i - %i", i);
-    chassis.set_drive_pid(-12, 127);
-    chassis.wait_drive();
 
+bool tug_in_case(int distance) {
+  while (chassis.interfered) {
+    // Attempt to drive backwards
+    chassis.set_drive_pid(distance, 127);
+    chassis.wait_drive();
+    pros::lcd::set_text(6, "Tugging");
     // If failsafed...
     if (chassis.interfered) {
       chassis.reset_drive_sensor();
-      chassis.set_drive_pid(-2, 20);
+      chassis.set_drive_pid(ez::util::sgn(distance) * 2, 20);
       pros::delay(1000);
     }
     // If robot successfully drove back, return
     else {
-      return;
+      return true;
     }
   }
+  return false;
 }
+
 
 // If there is no interference, robot will drive forward and turn 90 degrees. 
 // If interfered, robot will drive forward and then attempt to drive backwards. 
@@ -87,7 +89,7 @@ void interfered_example() {
  chassis.wait_drive();
 
  if (chassis.interfered) {
-   tug(3);
+   tug_in_case(20);
    return;
  }
 
@@ -95,31 +97,175 @@ void interfered_example() {
  chassis.wait_drive();
 }
 //PID tuning with slew
-void PID_Tune()
+void pid_drive_tune()
 {
   tuning_constants();
+  front_fork_toggle(OPEN);
+  pros::delay(2000);
   //one_mogo_constants();
   //two_mogo_constants();
-  chassis.set_drive_pid(24, 127, true);
+ 
+  chassis.set_swing_pid(ez::LEFT_SWING, 90, SWING_SPEED);
   chassis.wait_drive();
+  
+  pros::lcd::print(3, "%f", chassis.swingPID.error);
+  
+  
+}
 
-  chassis.set_drive_pid(-24, 127, true);
+void pid_turn_tune()
+{
+  tuning_constants();
+  
+  chassis.set_turn_pid(90, TURN_SPEED);
+  chassis.wait_drive();
+  
+  chassis.set_turn_pid(0, TURN_SPEED);
   chassis.wait_drive();
 }
 
-void Tall_Goal_Rush()
+void pid_swing_tune()
 {
-  //TODO: release high goal mech, adjust values, add goal cover code(maybe) 
-  //might have to open front_fork, idk yet
-  
-  chassis.set_drive_pid(52, 127);
-  chassis.wait_until(45);
+  tuning_constants();
 
-  Front_Fork_Toggle(CLOSE);
-  chassis.set_drive_pid(-40, 127);
+  chassis.set_swing_pid(ez::LEFT_SWING, 90, SWING_SPEED);
   chassis.wait_drive();
 
-  Back_Fork_Toggle(OPEN);
+  chassis.set_swing_pid(ez::LEFT_SWING, 0, SWING_SPEED);
+  chassis.wait_drive();
+}
 
 
+void DeployFront()
+{
+  just_right_fork.set(true);
+  pros::delay(155);
+  front_fork_toggle(OPEN);
+}
+void david_auto()
+{
+  pros::Task deploy_front_task(DeployFront);
+  chassis.set_drive_pid(56, 127);
+  chassis.wait_until(43);
+  
+  chassis.set_swing_pid(ez::RIGHT_SWING, -270, 127);
+  chassis.wait_until(-60);
+  
+  chassis.set_turn_pid(-180, 127);
+  chassis.wait_drive();
+
+  
+}
+void tall_goal_rush()
+{
+  pros::Task deploy_front_task(DeployFront);
+  chassis.set_drive_pid(56, 127);
+  chassis.wait_until(43);
+
+  chassis.set_drive_pid(-28, 127);
+  chassis.wait_drive();
+  
+  if(tug_in_case(-28))
+  {
+    return;
+  }
+  front_fork_toggle(CLOSE);
+  
+  front_mogo_constants();
+  chassis.set_turn_pid(-63, TURN_SPEED);
+  chassis.wait_drive();
+  
+  tall_goal_mech.set(true);
+  pros::delay(300);
+  back_fork_toggle(OPEN);
+
+  chassis.set_drive_pid(-30, DRIVE_SPEED, true);
+  chassis.wait_drive();
+
+  back_fork_toggle(CLOSE);
+  pros::delay(500);
+  chassis.set_turn_pid(30, TURN_SPEED);
+  chassis.wait_drive();
+
+  set_intake(INTAKE);
+  pros::delay(1000);
+  chassis.set_drive_pid(40, 50, true);
+  chassis.wait_drive();
+  
+
+  chassis.set_drive_pid(-50, 127);
+  chassis.wait_drive();
+
+}
+
+void right_with_win_point()
+{
+  pros::Task deploy_front_task(DeployFront);
+  chassis.set_drive_pid(45, 127);
+  chassis.wait_until(35);
+
+  
+  chassis.set_drive_pid(-35, 127);
+  chassis.wait_drive();
+
+  if(tug_in_case(-35))
+  {
+    return;  
+  }
+
+  tall_goal_mech.set(true);
+  pros::delay(300);
+  back_fork_toggle(OPEN);
+  front_fork_toggle(CLOSE);
+}
+
+void left_with_win_point()
+{
+  
+  pros::Task deploy_front_task(DeployFront);
+  chassis.set_drive_pid(50, 127);
+  chassis.wait_until(38);
+
+  
+  chassis.set_drive_pid(-24, 127);
+  chassis.wait_drive();
+
+  if(tug_in_case(-24))
+  {
+    return;  
+  }
+
+  tall_goal_mech.set(true);
+  pros::delay(300);
+  back_fork_toggle(OPEN);
+  front_fork_toggle(CLOSE); 
+
+  front_mogo_constants();
+
+  chassis.set_turn_pid(-25, TURN_SPEED);
+  chassis.wait_drive();
+
+  chassis.set_drive_pid(-16, DRIVE_SPEED, true);
+  chassis.wait_drive();
+
+  back_fork_toggle(CLOSE);
+  pros::delay(500);
+  chassis.set_drive_pid(26, DRIVE_SPEED, true);
+  chassis.wait_drive();
+
+  chassis.set_turn_pid(78, TURN_SPEED);
+  chassis.wait_drive();
+
+  set_intake(INTAKE);
+  pros::delay(500);
+
+  chassis.set_drive_pid(45, 50, true);
+  chassis.wait_drive();
+
+
+}
+
+void win_point()
+{
+  pros::Task deploy_front_task(DeployFront);
 }
