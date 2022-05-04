@@ -1,4 +1,7 @@
 #include "main.h"
+#include <iomanip>
+#include <map>
+#include <string>
 
 // Chassis constructor
 Drive chassis (
@@ -10,7 +13,18 @@ Drive chassis (
   1                     //Gear Ratio
 );
 
-
+std::map<int, std::string> map_to_name
+{
+  {13, "Front Left"},
+  {14, "Mid Left"},
+  {15, "Front Right"},
+  {16, "Mid Right"},
+  {17, " PTO Left"},
+  {18, "PTO Right"},
+  {19, "Back Left"},
+  {20, "Back Right"},
+  
+};
 
 void initialize() {
   // Print our branding over your terminal :D
@@ -22,17 +36,16 @@ void initialize() {
   chassis.set_curve_default(0, 0);   
   default_constants();
   exit_condition_defaults();
-  
   chassis.set_left_curve_buttons(pros::E_CONTROLLER_DIGITAL_LEFT, pros::E_CONTROLLER_DIGITAL_A);
 
   ez::as::auton_selector.add_autons
   ({
     Auton("David Auto", david_auto), 
-    Auton("Tall Goal Rush", tall_goal_rush),
+    Auton("Rush", rush_for_one_goal),
     Auton("Left With Win Point", left_with_win_point),
-    Auton("Rush", right_with_win_point),
-    Auton("Full Winpoint", win_point),
-    Auton("Interference\n\nAfter driving forward, robot performs differently if interfered or not.", interfered_example)
+    Auton("Tall Goal Rush", tall_goal_rush),
+    Auton("Right With Win Point", right_with_win_point),
+    Auton("Full Winpoint", win_point)
   });
 
   
@@ -55,11 +68,22 @@ void autonomous() {
   ez::as::auton_selector.call_selected_auton(); // Calls selected auton from autonomous selector.
 }
 
+void print_motor_temperatures()
+{
+  for(int i =0; i<chassis.left_motors.size(); i++)
+  {
+    pros::lcd::print(i+1, "%s: Temp: %.3f", map_to_name[chassis.left_motors[i].get_port()], chassis.left_motors[i].get_temperature());
+  }
+  for(int i = 0; i< chassis.right_motors.size(); i++)
+  {
+    pros::lcd::print(4 + i, "%s: Temp: %.3f",  map_to_name[chassis.right_motors[i].get_port()], chassis.right_motors[i].get_temperature());
+  }
+}
 void opcontrol() {
   chassis.set_drive_brake(MOTOR_BRAKE_BRAKE);
 
   while (true) {
-
+    print_motor_temperatures();
     intake_control();
     chassis.tank();
     
@@ -67,7 +91,8 @@ void opcontrol() {
     back_fork.button_toggle(master.get_digital(pros::E_CONTROLLER_DIGITAL_L2));
     tall_goal_mech.button_toggle(master.get_digital(pros::E_CONTROLLER_DIGITAL_Y));
     preload_release.button_toggle(master.get_digital(pros::E_CONTROLLER_DIGITAL_X));
-
+    kick_stand.button_toggle(master.get_digital(pros::E_CONTROLLER_DIGITAL_UP));
+     
     pros::delay(ez::util::DELAY_TIME); // This is used for timer calculations!  Keep this ez::util::DELAY_TIME
   }
 }

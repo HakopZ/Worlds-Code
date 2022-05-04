@@ -4,6 +4,7 @@
 #include "main.h"
 #include "pros/adi.hpp"
 
+inline Piston kick_stand('B');
 inline Piston back_fork('G');
 inline Piston just_right_fork('F');
 inline Piston tall_goal_mech('D');

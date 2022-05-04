@@ -5,6 +5,7 @@
 extern Drive chassis;
 
 //autos
+void rush_for_one_goal();
 void tall_goal_rush();
 void right_with_win_point();
 void left_with_win_point();
